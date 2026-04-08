@@ -1,0 +1,60 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "stratum"
+version = "0.1.0"
+description = "Python SDK for the Stratum image enrichment API"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [
+    { name = "Tim Lawrenz" },
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Image Processing",
+    "Typing :: Typed",
+]
+dependencies = [
+    "httpx>=0.27",
+    "pydantic>=2.0",
+]
+
+[project.optional-dependencies]
+numpy = ["numpy>=1.24"]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.4",
+    "respx>=0.22",
+]
+
+[project.urls]
+Homepage = "https://github.com/timlawrenz/stratum-python"
+Documentation = "https://github.com/timlawrenz/stratum-python#readme"
+Repository = "https://github.com/timlawrenz/stratum-python"
+Issues = "https://github.com/timlawrenz/stratum-python/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/stratum"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 99
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
