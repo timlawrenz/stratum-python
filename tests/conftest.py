@@ -59,7 +59,7 @@ def mock_completed_job(job_id: str) -> dict[str, Any]:
 @pytest.fixture
 def mock_clip_result() -> dict[str, Any]:
     return {
-        "embed_clip_vit_b_32": {
+        "whole_image.clip": {
             "status": "success",
             "data": [0.1] * 512,
         }
@@ -69,7 +69,7 @@ def mock_clip_result() -> dict[str, Any]:
 @pytest.fixture
 def mock_detection_result() -> dict[str, Any]:
     return {
-        "detect_bounding_box": {
+        "prominent_person.bbox": {
             "status": "success",
             "data": {
                 "detected": True,
@@ -83,7 +83,7 @@ def mock_detection_result() -> dict[str, Any]:
 @pytest.fixture
 def mock_pose_result() -> dict[str, Any]:
     return {
-        "extract_pose": {
+        "prominent_person.pose": {
             "status": "success",
             "data": [[0.5, 0.3, 0.99]] * 133,
         }
@@ -93,11 +93,11 @@ def mock_pose_result() -> dict[str, Any]:
 @pytest.fixture
 def mock_full_results() -> dict[str, Any]:
     return {
-        "embed_clip_vit_b_32": {
+        "whole_image.clip": {
             "status": "success",
             "data": [0.1] * 512,
         },
-        "detect_bounding_box": {
+        "prominent_person.bbox": {
             "status": "success",
             "data": {
                 "detected": True,
@@ -105,7 +105,7 @@ def mock_full_results() -> dict[str, Any]:
                 "confidence": 0.95,
             },
         },
-        "segment_body": {
+        "prominent_person.seg": {
             "status": "success",
             "data": {
                 "mask_base64": "AAAA",
@@ -113,7 +113,7 @@ def mock_full_results() -> dict[str, Any]:
                 "classes": ["background", "head"],
             },
         },
-        "caption_image": {
+        "whole_image.caption": {
             "status": "success",
             "data": {
                 "caption": "A person standing outdoors.",

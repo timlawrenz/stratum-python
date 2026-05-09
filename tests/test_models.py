@@ -1,37 +1,23 @@
 """Tests for Pydantic models."""
 
 from __future__ import annotations
+import pytest
 
 from stratum.models import (
     AnalyzeImageRequest,
     JobResponse,
     OperationInfo,
-    TaskRequest,
+    WholeImageTasks,
+    PersonTasks,
+    FaceTasks,
 )
 
 
-class TestTaskRequest:
-    def test_minimal(self):
-        t = TaskRequest(type="embed_clip_vit_b_32")
-        assert t.type == "embed_clip_vit_b_32"
-        assert t.params == {}
-        assert t.operation_id == ""
-
-    def test_full(self):
-        t = TaskRequest(
-            operation_id="my_clip",
-            type="embed_clip_vit_b_32",
-            params={"target": "whole_image"},
-        )
-        assert t.operation_id == "my_clip"
-        assert t.params["target"] == "whole_image"
-
-
 class TestAnalyzeImageRequest:
-    def test_defaults(self):
+    def test_minimal(self):
         req = AnalyzeImageRequest(
             image_url="https://example.com/img.jpg",
-            tasks=[TaskRequest(type="embed_clip_vit_b_32")],
+            whole_image=WholeImageTasks(clip=True),
         )
         assert req.sla_lane == "within_minutes"
         assert req.callback_url is None
@@ -39,10 +25,43 @@ class TestAnalyzeImageRequest:
     def test_with_callback(self):
         req = AnalyzeImageRequest(
             image_url="https://example.com/img.jpg",
-            tasks=[TaskRequest(type="embed_clip_vit_b_32")],
+            whole_image=WholeImageTasks(clip=True),
             callback_url="https://webhook.site/test",
         )
         assert req.callback_url == "https://webhook.site/test"
+
+    def test_face_requires_person(self):
+        with pytest.raises(ValueError, match="prominent_face requires prominent_person"):
+            AnalyzeImageRequest(
+                image_url="https://example.com/img.jpg",
+                prominent_face=FaceTasks(clip=True),
+            )
+
+    def test_t5_requires_caption(self):
+        with pytest.raises(ValueError, match="t5 requires caption"):
+            AnalyzeImageRequest(
+                image_url="https://example.com/img.jpg",
+                whole_image=WholeImageTasks(t5=True),
+            )
+
+    def test_person_depth_requires_seg(self):
+        with pytest.raises(ValueError, match="depth and normal require seg in prominent_person"):
+            AnalyzeImageRequest(
+                image_url="https://example.com/img.jpg",
+                prominent_person=PersonTasks(depth=True),
+            )
+
+    def test_face_depth_requires_seg(self):
+        with pytest.raises(ValueError, match="depth and normal require seg in prominent_face"):
+            AnalyzeImageRequest(
+                image_url="https://example.com/img.jpg",
+                prominent_person=PersonTasks(seg=True),
+                prominent_face=FaceTasks(depth=True),
+            )
+
+    def test_at_least_one_section(self):
+        with pytest.raises(ValueError, match="at least one section"):
+            AnalyzeImageRequest(image_url="https://example.com/img.jpg")
 
 
 class TestJobResponse:
@@ -62,9 +81,6 @@ class TestOperationInfo:
     def test_fields(self):
         op = OperationInfo(
             description="Test op",
-            allowed_targets=["whole_image", "prominent_person"],
-            default_target="whole_image",
             credit_cost=2,
         )
         assert op.credit_cost == 2
-        assert len(op.allowed_targets) == 2

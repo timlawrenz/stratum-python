@@ -32,7 +32,7 @@ class TestAsyncJobSubmission:
 
         job = await async_client.jobs.submit(
             image_url="https://example.com/img.jpg",
-            tasks=[{"type": "embed_clip_vit_b_32"}],
+            whole_image={"clip": True},
         )
         assert job.status == "queued"
         await async_client.close()
@@ -92,10 +92,10 @@ class TestAsyncAnalyze:
 
         results = await async_client.analyze(
             image_url="https://example.com/img.jpg",
-            operations=["embed_clip_vit_b_32"],
+            whole_image={"clip": True},
         )
-        assert "embed_clip_vit_b_32" in results
-        await async_client.close()
+        assert "whole_image.clip" in results
+
 
 
 class TestAsyncContextManager:
@@ -113,6 +113,6 @@ class TestAsyncContextManager:
         ) as client:
             job = await client.jobs.submit(
                 image_url="https://example.com/img.jpg",
-                tasks=[{"type": "embed_clip_vit_b_32"}],
+                whole_image={"clip": True},
             )
             assert job.status == "queued"

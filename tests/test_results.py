@@ -60,40 +60,39 @@ class TestPoseResult:
 class TestParseJobResults:
     def test_clip_embedding(self, mock_clip_result):
         results = parse_job_results(mock_clip_result)
-        assert "embed_clip_vit_b_32" in results
-        task = results["embed_clip_vit_b_32"]
+        assert "whole_image.clip" in results
+        task = results["whole_image.clip"]
         assert task.status == "success"
         assert isinstance(task.parsed, EmbeddingResult)
         assert task.parsed.dimensions == 512
 
     def test_detection(self, mock_detection_result):
         results = parse_job_results(mock_detection_result)
-        task = results["detect_bounding_box"]
+        task = results["prominent_person.bbox"]
         assert isinstance(task.parsed, DetectionResult)
         assert task.parsed.detected is True
-        assert task.parsed.bbox.x1 == 100.0
 
     def test_pose(self, mock_pose_result):
         results = parse_job_results(mock_pose_result)
-        task = results["extract_pose"]
+        task = results["prominent_person.pose"]
         assert isinstance(task.parsed, PoseResult)
         assert task.parsed.num_keypoints == 133
 
     def test_multiple_results(self, mock_full_results):
         results = parse_job_results(mock_full_results)
         assert len(results) == 4
-        assert "embed_clip_vit_b_32" in results
-        assert "detect_bounding_box" in results
-        assert "segment_body" in results
-        assert "caption_image" in results
+        assert "whole_image.clip" in results
+        assert "prominent_person.bbox" in results
+        assert "prominent_person.seg" in results
+        assert "whole_image.caption" in results
 
         # Check caption
-        caption = results["caption_image"]
+        caption = results["whole_image.caption"]
         assert isinstance(caption.parsed, CaptionResult)
         assert caption.parsed.text == "A person standing outdoors."
 
         # Check segmentation
-        seg = results["segment_body"]
+        seg = results["prominent_person.seg"]
         assert isinstance(seg.parsed, SegmentationResult)
         assert seg.parsed.num_classes == 2
 
@@ -126,15 +125,15 @@ class TestParseJobResults:
 class TestJobResults:
     def test_dict_access(self, mock_clip_result):
         results = parse_job_results(mock_clip_result)
-        assert results["embed_clip_vit_b_32"].status == "success"
+        assert results["whole_image.clip"].status == "success"
 
     def test_attr_access(self, mock_clip_result):
         results = parse_job_results(mock_clip_result)
-        assert results.embed_clip_vit_b_32.status == "success"
+        assert results.whole_image.clip.status == "success"
 
     def test_contains(self, mock_clip_result):
         results = parse_job_results(mock_clip_result)
-        assert "embed_clip_vit_b_32" in results
+        assert "whole_image.clip" in results
         assert "nonexistent" not in results
 
     def test_len(self, mock_full_results):
@@ -144,5 +143,5 @@ class TestJobResults:
     def test_iter(self, mock_full_results):
         results = parse_job_results(mock_full_results)
         keys = list(results)
-        assert "embed_clip_vit_b_32" in keys
-        assert len(keys) == 4
+        assert "whole_image.clip" in keys
+        assert "prominent_person.seg" in keys

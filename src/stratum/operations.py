@@ -2,100 +2,101 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from .exceptions import ValidationError
 from .models import OperationInfo
 
-OPERATIONS: dict[str, OperationInfo] = {
-    # ── Embeddings ────────────────────────────────────────────────
-    "embed_clip_vit_b_32": OperationInfo(
-        description="CLIP ViT-B/32 semantic embedding (512-d).",
-        allowed_targets=["whole_image", "prominent_person", "prominent_face"],
-        default_target="whole_image",
-        credit_cost=1,
-    ),
-    "embed_dino_v2": OperationInfo(
-        description="DINOv2 visual embedding (768-d).",
-        allowed_targets=["whole_image", "prominent_person", "prominent_face"],
-        default_target="whole_image",
-        credit_cost=1,
-    ),
-    "embed_dino_v3_cls": OperationInfo(
-        description="DINOv3 ViT-L/16 global CLS token (1024-d).",
-        allowed_targets=["whole_image"],
-        default_target="whole_image",
-        credit_cost=1,
-    ),
-    "embed_dino_v3_full": OperationInfo(
-        description="DINOv3 ViT-L/16 CLS + spatial patch tokens.",
-        allowed_targets=["whole_image"],
-        default_target="whole_image",
-        credit_cost=2,
-    ),
-    # ── Detection ─────────────────────────────────────────────────
-    "detect_bounding_box": OperationInfo(
-        description="Detect bounding box for a specified target.",
-        allowed_targets=["prominent_person", "prominent_face"],
-        default_target="prominent_person",
-        credit_cost=1,
-    ),
-    # ── Dense prediction ──────────────────────────────────────────
-    "extract_pose": OperationInfo(
-        description="DWPose-L whole-body keypoints (133 points).",
-        allowed_targets=["prominent_person", "prominent_face"],
-        default_target="prominent_person",
-        credit_cost=3,
-    ),
-    "segment_body": OperationInfo(
-        description="Sapiens-1B 28-class body-part segmentation.",
-        allowed_targets=["prominent_person", "prominent_face"],
-        default_target="prominent_person",
-        credit_cost=5,
-    ),
-    "estimate_depth": OperationInfo(
-        description="Sapiens-1B monocular depth estimation.",
-        allowed_targets=["prominent_person", "prominent_face"],
-        default_target="prominent_person",
-        credit_cost=5,
-    ),
-    "estimate_normals": OperationInfo(
-        description="Sapiens-1B surface normal estimation (XYZ).",
-        allowed_targets=["prominent_person", "prominent_face"],
-        default_target="prominent_person",
-        credit_cost=5,
-    ),
-    # ── Text / Captioning ─────────────────────────────────────────
-    "caption_image": OperationInfo(
-        description="Dense objective image caption via Ollama.",
-        allowed_targets=["whole_image", "prominent_person", "prominent_face"],
-        default_target="whole_image",
-        credit_cost=2,
-    ),
-    "encode_t5": OperationInfo(
-        description="T5-Large encoding of image caption (512×1024).",
-        allowed_targets=["whole_image"],
-        default_target="whole_image",
-        credit_cost=2,
-    ),
+if TYPE_CHECKING:
+    from .models import FaceTasks, PersonTasks, WholeImageTasks, AnalyzeImageRequest
+
+
+class FlagSpec:
+    """Complete specification for one boolean flag inside a section."""
+    def __init__(self, op_type: str, credit_cost: int, description: str = ""):
+        self.op_type = op_type
+        self.credit_cost = credit_cost
+        self.description = description
+
+
+SECTION_FLAGS: dict[str, dict[str, FlagSpec]] = {
+    "whole_image": {
+        "clip":        FlagSpec("embed_clip_vit_b_32",  1, "CLIP ViT-B/32"),
+        "dino_v2":     FlagSpec("embed_dino_v2",        1, "DINOv2"),
+        "dinov3_cls":  FlagSpec("embed_dino_v3_cls",    1, "DINOv3 CLS token"),
+        "dinov3_full": FlagSpec("embed_dino_v3_full",   2, "DINOv3 cls+patches"),
+        "caption":     FlagSpec("caption_image",        2, "Image caption"),
+        "t5":          FlagSpec("encode_t5",            2, "T5 encoding"),
+        "pixel":       FlagSpec("bucket_crop",          1, "Pixel bucket crop"),
+    },
+    "prominent_person": {
+        "clip":        FlagSpec("embed_clip_vit_b_32",  1, "CLIP ViT-B/32"),
+        "dino_v2":     FlagSpec("embed_dino_v2",        1, "DINOv2"),
+        "dinov3_cls":  FlagSpec("embed_dino_v3_cls",    1, "DINOv3 CLS token"),
+        "dinov3_full": FlagSpec("embed_dino_v3_full",   2, "DINOv3 cls+patches"),
+        "caption":     FlagSpec("caption_image",        2, "Person caption"),
+        "t5":          FlagSpec("encode_t5",            2, "T5 encoding"),
+        "pose":        FlagSpec("extract_pose",         3, "Pose keypoints"),
+        "seg":         FlagSpec("segment_body",         5, "Body segmentation"),
+        "depth":       FlagSpec("estimate_depth",       5, "Depth map"),
+        "normal":      FlagSpec("estimate_normals",     5, "Surface normals"),
+    },
+    "prominent_face": {
+        "clip":        FlagSpec("embed_clip_vit_b_32",  1, "CLIP ViT-B/32"),
+        "dino_v2":     FlagSpec("embed_dino_v2",        1, "DINOv2"),
+        "dinov3_cls":  FlagSpec("embed_dino_v3_cls",    1, "DINOv3 CLS token"),
+        "dinov3_full": FlagSpec("embed_dino_v3_full",   2, "DINOv3 cls+patches"),
+        "caption":     FlagSpec("caption_image",        2, "Face caption"),
+        "t5":          FlagSpec("encode_t5",            2, "T5 encoding"),
+        "pose":        FlagSpec("extract_pose",         3, "Face pose keypoints"),
+        "seg":         FlagSpec("segment_body",         5, "Face segmentation"),
+        "depth":       FlagSpec("estimate_depth",       5, "Depth map"),
+        "normal":      FlagSpec("estimate_normals",     5, "Surface normals"),
+    },
 }
 
+DETECTION_COST = 1
 
-def validate_operations(operation_types: list[str]) -> None:
-    """Raise ValidationError if any operation type is unknown."""
-    unknown = [op for op in operation_types if op not in OPERATIONS]
-    if unknown:
-        raise ValidationError(
-            f"Unknown operations: {', '.join(unknown)}. "
-            f"Valid operations: {', '.join(sorted(OPERATIONS))}",
-            status_code=400,
-        )
+_WHOLE_IMAGE_COSTS: dict[str, int] = {
+    f: s.credit_cost for f, s in SECTION_FLAGS["whole_image"].items()
+}
+_PERSON_COSTS: dict[str, int] = {
+    f: s.credit_cost for f, s in SECTION_FLAGS["prominent_person"].items()
+}
+_FACE_COSTS: dict[str, int] = {
+    f: s.credit_cost for f, s in SECTION_FLAGS["prominent_face"].items()
+}
 
-
-def estimate_credits(operation_types: list[str]) -> int:
-    """Estimate total credit cost for a set of operations."""
-    validate_operations(operation_types)
-    return sum(OPERATIONS[op].credit_cost for op in operation_types)
+def _section_cost(section: WholeImageTasks | PersonTasks | FaceTasks, costs: dict[str, int]) -> int:
+    return sum(cost for field, cost in costs.items() if getattr(section, field, False))
 
 
-def list_operations() -> dict[str, OperationInfo]:
+def estimate_credits(req: AnalyzeImageRequest) -> int:
+    """Estimate total credit cost for a section-based job request."""
+    total = 0
+    if req.whole_image is not None:
+        total += _section_cost(req.whole_image, _WHOLE_IMAGE_COSTS)
+    if req.prominent_person is not None:
+        total += DETECTION_COST
+        total += _section_cost(req.prominent_person, _PERSON_COSTS)
+    if req.prominent_face is not None:
+        total += DETECTION_COST
+        total += _section_cost(req.prominent_face, _FACE_COSTS)
+    return total
+
+
+def list_operations() -> dict[str, list[str]]:
     """Return all available operations."""
-    return dict(OPERATIONS)
+    return {
+        "whole_image": list(_WHOLE_IMAGE_COSTS),
+        "prominent_person": list(_PERSON_COSTS),
+        "prominent_face": list(_FACE_COSTS),
+    }
+
+def get_op_type(section: str, flag: str) -> str:
+    """Get the underlying operation type for a given section flag."""
+    if flag == "bbox":
+        return "detect_bounding_box"
+    spec = SECTION_FLAGS.get(section, {}).get(flag)
+    if not spec:
+        return ""
+    return spec.op_type

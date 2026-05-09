@@ -6,6 +6,8 @@ import base64
 from dataclasses import dataclass, field
 from typing import Any
 
+from .operations import get_op_type
+
 try:
     import numpy as np
 
@@ -226,11 +228,33 @@ class TaskResult:
 # ── Parsed results container ─────────────────────────────────────────
 
 
+class SectionResults:
+    """Accessor for results within a specific section."""
+    def __init__(self, section_name: str, results_dict: dict[str, TaskResult]):
+        self._section_name = section_name
+        self._results = results_dict
+
+    def __getattr__(self, name: str) -> TaskResult:
+        key = f"{self._section_name}.{name}"
+        if key in self._results:
+            return self._results[key]
+        raise AttributeError(f"No result for operation '{name}' in section '{self._section_name}'")
+
+    def __getitem__(self, key: str) -> TaskResult:
+        full_key = f"{self._section_name}.{key}"
+        if full_key in self._results:
+            return self._results[full_key]
+        raise KeyError(full_key)
+
+    def __contains__(self, key: str) -> bool:
+        return f"{self._section_name}.{key}" in self._results
+
+
 @dataclass
 class JobResults:
     """Container for all results from a completed job.
 
-    Access results by operation_id as dict keys or as attributes.
+    Access results by dot notation like `results.whole_image.clip` or flat dictionary keys.
     """
 
     _results: dict[str, TaskResult] = field(default_factory=dict)
@@ -238,13 +262,17 @@ class JobResults:
     def __getitem__(self, key: str) -> TaskResult:
         return self._results[key]
 
-    def __getattr__(self, name: str) -> TaskResult:
-        if name.startswith("_"):
-            raise AttributeError(name)
-        try:
-            return self._results[name]
-        except KeyError:
-            raise AttributeError(f"No result for operation '{name}'") from None
+    @property
+    def whole_image(self) -> SectionResults:
+        return SectionResults("whole_image", self._results)
+
+    @property
+    def prominent_person(self) -> SectionResults:
+        return SectionResults("prominent_person", self._results)
+
+    @property
+    def prominent_face(self) -> SectionResults:
+        return SectionResults("prominent_face", self._results)
 
     def __contains__(self, key: str) -> bool:
         return key in self._results
@@ -349,14 +377,21 @@ def parse_job_results(
     """Parse raw job result JSON into typed JobResults.
 
     Args:
-        raw: Dict mapping operation_id → {status, data, error_message}.
-        task_type_map: Optional mapping of operation_id → operation type.
-            If not provided, the operation_id is used as the type.
+        raw: Dict mapping section.flag → {status, data, error_message}.
+        task_type_map: Optional.
     """
     results: dict[str, TaskResult] = {}
     for op_id, value in raw.items():
         if isinstance(value, dict) and "status" in value:
-            op_type = (task_type_map or {}).get(op_id, op_id)
+            if task_type_map and op_id in task_type_map:
+                op_type = task_type_map[op_id]
+            else:
+                if "." in op_id:
+                    section, flag = op_id.split(".", 1)
+                    op_type = get_op_type(section, flag)
+                else:
+                    op_type = op_id
+
             parsed = None
             if value.get("status") == "success" and value.get("data") is not None:
                 parsed = _parse_result(op_type, value["data"])

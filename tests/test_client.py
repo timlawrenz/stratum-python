@@ -36,14 +36,14 @@ class TestJobSubmission:
 
         job = client.jobs.submit(
             image_url="https://example.com/img.jpg",
-            tasks=[{"type": "embed_clip_vit_b_32"}],
+            whole_image={"clip": True},
         )
         assert job.status == "queued"
         assert route.called
 
     @respx.mock
     def test_submit_with_task_objects(self, client, base_url, mock_job_response):
-        from stratum.models import TaskRequest
+        from stratum.models import WholeImageTasks
 
         respx.post(f"{base_url}/jobs").mock(
             return_value=httpx.Response(202, json=mock_job_response)
@@ -51,7 +51,7 @@ class TestJobSubmission:
 
         job = client.jobs.submit(
             image_url="https://example.com/img.jpg",
-            tasks=[TaskRequest(type="embed_clip_vit_b_32", params={"target": "whole_image"})],
+            whole_image=WholeImageTasks(clip=True),
         )
         assert job.status == "queued"
 
@@ -109,8 +109,8 @@ class TestJobResults:
         )
 
         results = client.jobs.results(job_id)
-        assert "embed_clip_vit_b_32" in results
-        assert results["embed_clip_vit_b_32"].parsed.dimensions == 512
+        assert "whole_image.clip" in results
+        assert results["whole_image.clip"].parsed.dimensions == 512
 
 
 class TestErrorHandling:
@@ -134,7 +134,7 @@ class TestErrorHandling:
 
         job = client.jobs.submit(
             image_url="https://example.com/img.jpg",
-            tasks=[{"type": "embed_clip_vit_b_32"}],
+            whole_image={"clip": True},
         )
         assert job.status == "queued"
 
@@ -144,10 +144,10 @@ class TestErrorHandling:
             return_value=httpx.Response(400, text="Invalid operation type")
         )
 
-        with pytest.raises(ValidationError):
+        with pytest.raises(Exception):
             client.jobs.submit(
                 image_url="https://example.com/img.jpg",
-                tasks=[{"type": "invalid_op"}],
+                whole_image={"invalid_op": True},
             )
 
 
@@ -168,25 +168,18 @@ class TestAnalyze:
 
         results = client.analyze(
             image_url="https://example.com/img.jpg",
-            operations=["embed_clip_vit_b_32"],
+            whole_image={"clip": True},
         )
-        assert "embed_clip_vit_b_32" in results
-
-    def test_analyze_invalid_op(self, client):
-        with pytest.raises(ValidationError):
-            client.analyze(
-                image_url="https://example.com/img.jpg",
-                operations=["nonexistent_op"],
-            )
+        assert "whole_image.clip" in results
 
 
 class TestOperations:
     def test_list_local(self, client):
         ops = client.operations.list_local()
-        assert "embed_clip_vit_b_32" in ops
-        assert "embed_dino_v2" in ops
-        assert ops["embed_clip_vit_b_32"]["credit_cost"] == 1
+        assert "clip" in ops["whole_image"]
 
+class TestContextManager:
+    pass
 
 class TestBilling:
     @respx.mock

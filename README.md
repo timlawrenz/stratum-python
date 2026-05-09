@@ -16,15 +16,16 @@ client = StratumClient(api_key="sk_...")
 # One-liner: submit → wait → typed results
 results = client.analyze(
     image_url="https://example.com/photo.jpg",
-    operations=["embed_clip_vit_b_32", "detect_bounding_box"],
+    whole_image={"clip": True},
+    prominent_person={"pose": True, "seg": True},
 )
 
 # Access typed results
-clip = results["embed_clip_vit_b_32"]
+clip = results.whole_image.clip
 print(clip.parsed.embedding[:5])   # [0.12, -0.45, ...]
 print(clip.parsed.dimensions)       # 512
 
-det = results["detect_bounding_box"]
+det = results.prominent_person.bbox
 print(det.parsed.detected)          # True
 print(det.parsed.bbox)              # BBox(x1=341, y1=34, x2=1365, y2=2880)
 ```
@@ -37,7 +38,7 @@ from stratum import AsyncStratumClient
 async with AsyncStratumClient(api_key="sk_...") as client:
     results = await client.analyze(
         image_url="https://example.com/photo.jpg",
-        operations=["embed_clip_vit_b_32"],
+        whole_image={"clip": True},
     )
 ```
 
@@ -47,10 +48,8 @@ async with AsyncStratumClient(api_key="sk_...") as client:
 # Submit without waiting
 job = client.jobs.submit(
     image_url="https://example.com/photo.jpg",
-    tasks=[
-        {"type": "embed_clip_vit_b_32", "params": {"target": "whole_image"}},
-        {"type": "segment_body", "params": {"target": "prominent_person"}},
-    ],
+    whole_image={"clip": True},
+    prominent_person={"seg": True},
     sla_lane="within_minutes",
 )
 print(job.job_id, job.status)  # UUID "queued"
@@ -68,7 +67,8 @@ results = client.jobs.results(job.job_id)
 # Submit many images with the same operations
 jobs = client.batch.submit(
     image_urls=["url1", "url2", "url3"],
-    operations=["embed_clip_vit_b_32", "embed_dino_v2"],
+    whole_image={"clip": True, "dino_v2": True},
+    prominent_face={"dinov3_cls": True},
 )
 
 # Wait for all with progress
@@ -100,7 +100,7 @@ all_results = client.batch.wait_all(
 from stratum import list_operations, estimate_credits
 
 ops = list_operations()
-cost = estimate_credits(["embed_clip_vit_b_32", "segment_body"])  # 6
+cost = estimate_credits(AnalyzeImageRequest(image_url="", whole_image={"clip": True}, prominent_person={"seg": True}))  # 7
 ```
 
 ## Typed results
@@ -146,7 +146,7 @@ from stratum import (
 )
 
 try:
-    results = client.analyze(image_url=url, operations=["embed_clip_vit_b_32"])
+    results = client.analyze(image_url=url, whole_image={"clip": True})
 except AuthenticationError:
     print("Bad API key")
 except InsufficientCreditsError:

@@ -23,9 +23,11 @@ from .models import (
     LaneStatus,
     OperationInfo,
     SystemStatusResponse,
-    TaskRequest,
+    WholeImageTasks,
+    PersonTasks,
+    FaceTasks,
 )
-from .operations import OPERATIONS, estimate_credits, list_operations, validate_operations
+from .operations import estimate_credits, list_operations
 from .results import (
     BBox,
     CaptionResult,
@@ -40,6 +42,7 @@ from .results import (
     SegmentationResult,
     T5Result,
     TaskResult,
+    SectionResults,
 )
 from .webhook import verify_signature
 
@@ -58,7 +61,9 @@ __all__ = [
     "LaneStatus",
     "OperationInfo",
     "SystemStatusResponse",
-    "TaskRequest",
+    "WholeImageTasks",
+    "PersonTasks",
+    "FaceTasks",
     # Results
     "BBox",
     "CaptionResult",
@@ -73,11 +78,10 @@ __all__ = [
     "SegmentationResult",
     "T5Result",
     "TaskResult",
+    "SectionResults",
     # Operations
-    "OPERATIONS",
     "estimate_credits",
     "list_operations",
-    "validate_operations",
     # Exceptions
     "AuthenticationError",
     "InsufficientCreditsError",

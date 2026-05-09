@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from typing import Any
+from typing import Any, Dict
 
 import httpx
 
@@ -26,10 +26,17 @@ from .models import (
     BalanceResponse,
     JobResponse,
     SystemStatusResponse,
-    TaskRequest,
+    WholeImageTasks,
+    PersonTasks,
+    FaceTasks,
 )
-from .operations import OPERATIONS, validate_operations
 from .results import JobResults, parse_job_results
+
+
+def _convert_section(val: Any, model_class: type) -> Any:
+    if isinstance(val, dict):
+        return model_class(**val)
+    return val
 
 
 async def _async_request_with_retry(
@@ -77,21 +84,18 @@ class _AsyncJobsNamespace:
     async def submit(
         self,
         image_url: str,
-        tasks: list[dict[str, Any]] | list[TaskRequest],
+        whole_image: WholeImageTasks | dict[str, bool] | None = None,
+        prominent_person: PersonTasks | dict[str, bool] | None = None,
+        prominent_face: FaceTasks | dict[str, bool] | None = None,
         sla_lane: str = "within_minutes",
         callback_url: str | None = None,
     ) -> JobResponse:
         """Submit an image enrichment job."""
-        task_objs = []
-        for t in tasks:
-            if isinstance(t, TaskRequest):
-                task_objs.append(t)
-            else:
-                task_objs.append(TaskRequest(**t))
-
         body = AnalyzeImageRequest(
             image_url=image_url,
-            tasks=task_objs,
+            whole_image=_convert_section(whole_image, WholeImageTasks),
+            prominent_person=_convert_section(prominent_person, PersonTasks),
+            prominent_face=_convert_section(prominent_face, FaceTasks),
             sla_lane=sla_lane,
             callback_url=callback_url,
         )
@@ -132,7 +136,6 @@ class _AsyncJobsNamespace:
     async def results(
         self,
         job_id: str | uuid.UUID,
-        task_type_map: dict[str, str] | None = None,
     ) -> JobResults:
         """Download and parse results for a completed job."""
         job = await self.get(job_id)
@@ -145,7 +148,7 @@ class _AsyncJobsNamespace:
             job.result_url, timeout=self._client._config.timeout
         )
         raw = response.json()
-        return parse_job_results(raw, task_type_map)
+        return parse_job_results(raw)
 
     async def list(self, limit: int = 20, offset: int = 0) -> list[JobResponse]:
         """List recent jobs."""
@@ -183,36 +186,23 @@ class _AsyncBatchNamespace:
     async def submit(
         self,
         image_urls: list[str],
-        operations: list[str],
+        whole_image: WholeImageTasks | dict[str, bool] | None = None,
+        prominent_person: PersonTasks | dict[str, bool] | None = None,
+        prominent_face: FaceTasks | dict[str, bool] | None = None,
         sla_lane: str = "within_minutes",
         callback_url: str | None = None,
         max_concurrent: int = 10,
     ) -> list[JobResponse]:
-        """Submit multiple images with the same operations.
-
-        Args:
-            image_urls: List of image URLs to process.
-            operations: Operation types to run on each image.
-            sla_lane: SLA lane for all jobs.
-            callback_url: Optional webhook URL.
-            max_concurrent: Max concurrent submissions.
-        """
-        validate_operations(operations)
+        """Submit multiple images with the same operations."""
         semaphore = asyncio.Semaphore(max_concurrent)
 
         async def _submit_one(url: str) -> JobResponse:
             async with semaphore:
-                tasks = [
-                    TaskRequest(
-                        operation_id=op,
-                        type=op,
-                        params={"target": OPERATIONS[op].default_target},
-                    )
-                    for op in operations
-                ]
                 return await self._client.jobs.submit(
                     image_url=url,
-                    tasks=tasks,
+                    whole_image=whole_image,
+                    prominent_person=prominent_person,
+                    prominent_face=prominent_face,
                     sla_lane=sla_lane,
                     callback_url=callback_url,
                 )
@@ -244,16 +234,7 @@ class _AsyncBatchNamespace:
 
 
 class AsyncStratumClient:
-    """Asynchronous client for the Stratum image enrichment API.
-
-    Usage::
-
-        async with AsyncStratumClient(api_key="sk_...") as client:
-            results = await client.analyze(
-                image_url="https://example.com/photo.jpg",
-                operations=["embed_clip_vit_b_32"],
-            )
-    """
+    """Asynchronous client for the Stratum image enrichment API."""
 
     def __init__(
         self,
@@ -288,26 +269,22 @@ class AsyncStratumClient:
     async def analyze(
         self,
         image_url: str,
-        operations: list[str],
-        target: str | None = None,
+        whole_image: WholeImageTasks | dict[str, bool] | None = None,
+        prominent_person: PersonTasks | dict[str, bool] | None = None,
+        prominent_face: FaceTasks | dict[str, bool] | None = None,
         sla_lane: str = "within_minutes",
         timeout: float | None = None,
     ) -> JobResults:
         """One-liner: submit, wait, return typed results."""
-        validate_operations(operations)
-
-        tasks = []
-        type_map: dict[str, str] = {}
-        for op in operations:
-            op_info = OPERATIONS[op]
-            tgt = target or op_info.default_target
-            task = TaskRequest(operation_id=op, type=op, params={"target": tgt})
-            tasks.append(task)
-            type_map[op] = op
-
-        job = await self.jobs.submit(image_url=image_url, tasks=tasks, sla_lane=sla_lane)
+        job = await self.jobs.submit(
+            image_url=image_url,
+            whole_image=whole_image,
+            prominent_person=prominent_person,
+            prominent_face=prominent_face,
+            sla_lane=sla_lane
+        )
         job = await self.jobs.wait(job.job_id, timeout=timeout)
-        return await self.jobs.results(job.job_id, task_type_map=type_map)
+        return await self.jobs.results(job.job_id)
 
     async def status(self) -> SystemStatusResponse:
         """Get system status."""
