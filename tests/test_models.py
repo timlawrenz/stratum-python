@@ -1,15 +1,16 @@
 """Tests for Pydantic models."""
 
 from __future__ import annotations
+
 import pytest
 
 from stratum.models import (
     AnalyzeImageRequest,
+    FaceTasks,
     JobResponse,
     OperationInfo,
-    WholeImageTasks,
     PersonTasks,
-    FaceTasks,
+    WholeImageTasks,
 )
 
 

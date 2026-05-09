@@ -3,11 +3,9 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from .exceptions import ValidationError
-from .models import OperationInfo
 
 if TYPE_CHECKING:
-    from .models import FaceTasks, PersonTasks, WholeImageTasks, AnalyzeImageRequest
+    from .models import AnalyzeImageRequest, FaceTasks, PersonTasks, WholeImageTasks
 
 
 class FlagSpec:
@@ -66,7 +64,9 @@ _FACE_COSTS: dict[str, int] = {
     f: s.credit_cost for f, s in SECTION_FLAGS["prominent_face"].items()
 }
 
-def _section_cost(section: WholeImageTasks | PersonTasks | FaceTasks, costs: dict[str, int]) -> int:
+def _section_cost(
+    section: WholeImageTasks | PersonTasks | FaceTasks, costs: dict[str, int]
+) -> int:
     return sum(cost for field, cost in costs.items() if getattr(section, field, False))
 
 

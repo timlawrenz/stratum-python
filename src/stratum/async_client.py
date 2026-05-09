@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from typing import Any, Dict
+from typing import Any
 
 import httpx
 
@@ -24,11 +24,11 @@ from .exceptions import JobFailedError, JobTimeoutError
 from .models import (
     AnalyzeImageRequest,
     BalanceResponse,
+    FaceTasks,
     JobResponse,
+    PersonTasks,
     SystemStatusResponse,
     WholeImageTasks,
-    PersonTasks,
-    FaceTasks,
 )
 from .results import JobResults, parse_job_results
 

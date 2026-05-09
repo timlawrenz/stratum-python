@@ -19,13 +19,13 @@ from .models import (
     BatchRequest,
     BatchResponse,
     BatchStatusResponse,
+    FaceTasks,
     JobResponse,
     LaneStatus,
     OperationInfo,
+    PersonTasks,
     SystemStatusResponse,
     WholeImageTasks,
-    PersonTasks,
-    FaceTasks,
 )
 from .operations import estimate_credits, list_operations
 from .results import (
@@ -39,10 +39,10 @@ from .results import (
     Keypoint,
     NormalsResult,
     PoseResult,
+    SectionResults,
     SegmentationResult,
     T5Result,
     TaskResult,
-    SectionResults,
 )
 from .webhook import verify_signature
 

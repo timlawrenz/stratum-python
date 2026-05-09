@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 import uuid
-from typing import Any, Dict
+from typing import Any
 
 import httpx
 
@@ -23,13 +23,13 @@ from .models import (
     AnalyzeImageRequest,
     AvailableOperationsResponse,
     BalanceResponse,
+    FaceTasks,
     JobResponse,
+    PersonTasks,
     SystemStatusResponse,
     WholeImageTasks,
-    PersonTasks,
-    FaceTasks,
 )
-from .operations import list_operations, get_op_type
+from .operations import list_operations
 from .results import JobResults, parse_job_results
 
 

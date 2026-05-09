@@ -11,7 +11,6 @@ from stratum.exceptions import (
     AuthenticationError,
     JobFailedError,
     JobTimeoutError,
-    ValidationError,
 )
 
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, model_validator
 
 # ── Requests ──────────────────────────────────────────────────────────
 
@@ -64,7 +64,11 @@ class AnalyzeImageRequest(BaseModel):
 
         for section_name in ("whole_image", "prominent_person", "prominent_face"):
             section = getattr(self, section_name)
-            if section is not None and getattr(section, "t5", False) and not getattr(section, "caption", False):
+            if (
+                section is not None
+                and getattr(section, "t5", False)
+                and not getattr(section, "caption", False)
+            ):
                 raise ValueError(f"t5 requires caption in {section_name}")
 
         if self.prominent_person is not None:
