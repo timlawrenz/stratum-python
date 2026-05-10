@@ -13,11 +13,28 @@ from stratum import StratumClient
 
 client = StratumClient(api_key="sk_...")
 
-# One-liner: submit → wait → typed results
+# Option 1: Provide a public URL
 results = client.analyze(
     image_url="https://example.com/photo.jpg",
     whole_image={"clip": True},
     prominent_person={"pose": True, "seg": True},
+)
+
+# Option 2: Upload a local file directly (handles multipart form upload automatically)
+results = client.analyze_file(
+    file_path="/path/to/local/photo.jpg",
+    whole_image={"clip": True},
+    prominent_person={"pose": True, "seg": True},
+)
+
+# Option 3: Embed Base64 directly into the JSON request
+import base64
+with open("/path/to/local/photo.jpg", "rb") as f:
+    b64_img = base64.b64encode(f.read()).decode("utf-8")
+
+results = client.analyze(
+    image_base64=b64_img,
+    whole_image={"clip": True},
 )
 
 # Access typed results
@@ -36,8 +53,15 @@ print(det.parsed.bbox)              # BBox(x1=341, y1=34, x2=1365, y2=2880)
 from stratum import AsyncStratumClient
 
 async with AsyncStratumClient(api_key="sk_...") as client:
+    # URL submission
     results = await client.analyze(
         image_url="https://example.com/photo.jpg",
+        whole_image={"clip": True},
+    )
+    
+    # Direct file upload
+    results = await client.analyze_file(
+        file_path="/path/to/local/photo.jpg",
         whole_image={"clip": True},
     )
 ```
@@ -47,11 +71,18 @@ async with AsyncStratumClient(api_key="sk_...") as client:
 ```python
 # Submit without waiting
 job = client.jobs.submit(
-    image_url="https://example.com/photo.jpg",
+    image_url="https://example.com/photo.jpg", # Can also use image_base64=...
     whole_image={"clip": True},
     prominent_person={"seg": True},
     sla_lane="within_minutes",
 )
+
+# Or submit a local file without waiting
+job = client.jobs.submit_file(
+    file_path="/path/to/local/photo.jpg",
+    whole_image={"clip": True},
+)
+
 print(job.job_id, job.status)  # UUID "queued"
 
 # Wait for completion
@@ -111,6 +142,7 @@ Results are automatically parsed into typed objects:
 - `DetectionResult` — `.detected`, `.bbox`, `.confidence`
 - `PoseResult` — `.keypoints` (list of `Keypoint`), `.num_keypoints`
 - `SegmentationResult` — `.mask_base64`, `.shape`, `.classes`, `.to_numpy()`
+- `PixelResult` — `.pixels_base64`, `.shape`, `.dtype`, `.to_numpy()`
 - `DepthResult` — `.depth_base64`, `.shape`, `.to_numpy()`
 - `NormalsResult` — `.normals_base64`, `.shape`, `.to_numpy()`
 - `CaptionResult` — `.text`

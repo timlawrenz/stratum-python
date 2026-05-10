@@ -126,6 +126,27 @@ class SegmentationResult:
 
 
 @dataclass
+class PixelResult:
+    """Raw pixel data as a tensor."""
+
+    pixels_base64: str
+    shape: tuple[int, int, int]  # (H, W, 3)
+    dtype: str = "uint8"
+
+    def decode(self) -> bytes:
+        """Decode base64 pixel map to raw bytes."""
+        return base64.b64decode(self.pixels_base64)
+
+    def to_numpy(self) -> Any:
+        """Decode to numpy array (H, W, 3). Requires numpy."""
+        if not HAS_NUMPY:
+            raise ImportError("Install numpy: pip install stratum[numpy]")
+        raw = self.decode()
+        np_dtype = np.dtype(self.dtype)
+        return np.frombuffer(raw, dtype=np_dtype).reshape(self.shape)
+
+
+@dataclass
 class DepthResult:
     """Monocular depth estimation output."""
 
@@ -217,6 +238,7 @@ class TaskResult:
         | DetectionResult
         | PoseResult
         | SegmentationResult
+        | PixelResult
         | DepthResult
         | NormalsResult
         | CaptionResult
@@ -337,6 +359,14 @@ def _parse_result(operation_type: str, data: Any) -> Any:
                 mask_base64=data.get("mask_base64", ""),
                 shape=tuple(data.get("mask_shape", [0, 0])),
                 classes=data.get("classes", []),
+            )
+
+    if operation_type == "extract_pixels":
+        if isinstance(data, dict):
+            return PixelResult(
+                pixels_base64=data.get("pixels_base64", ""),
+                shape=tuple(data.get("shape", [0, 0, 0])),
+                dtype=data.get("dtype", "uint8"),
             )
 
     if operation_type == "estimate_depth":

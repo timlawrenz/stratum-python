@@ -47,7 +47,8 @@ class _JobsNamespace:
 
     def submit(
         self,
-        image_url: str,
+        image_url: str | None = None,
+        image_base64: str | bytes | None = None,
         whole_image: WholeImageTasks | dict[str, bool] | None = None,
         prominent_person: PersonTasks | dict[str, bool] | None = None,
         prominent_face: FaceTasks | dict[str, bool] | None = None,
@@ -58,6 +59,7 @@ class _JobsNamespace:
 
         Args:
             image_url: URL of the image to process.
+            image_base64: Base64-encoded image data, or raw bytes.
             whole_image: Operations to run on the full image.
             prominent_person: Operations to run on the prominent person.
             prominent_face: Operations to run on the prominent face.
@@ -67,8 +69,17 @@ class _JobsNamespace:
         Returns:
             JobResponse with job_id and initial status.
         """
+
+        b64_str = None
+        if image_base64 is not None:
+            if isinstance(image_base64, bytes):
+                b64_str = image_base64.decode('utf-8')
+            else:
+                b64_str = image_base64
+
         body = AnalyzeImageRequest(
             image_url=image_url,
+            image_base64=b64_str,
             whole_image=_convert_section(whole_image, WholeImageTasks),
             prominent_person=_convert_section(prominent_person, PersonTasks),
             prominent_face=_convert_section(prominent_face, FaceTasks),
@@ -77,6 +88,36 @@ class _JobsNamespace:
         )
         data = self._client._request("POST", "/jobs", json=body.model_dump())
         return JobResponse(**data)
+
+    def submit_file(
+        self,
+        file_path: str,
+        whole_image: WholeImageTasks | dict[str, bool] | None = None,
+        prominent_person: PersonTasks | dict[str, bool] | None = None,
+        prominent_face: FaceTasks | dict[str, bool] | None = None,
+        sla_lane: str = "within_minutes",
+        callback_url: str | None = None,
+    ) -> JobResponse:
+        """Submit an image file via multipart form upload."""
+        import json
+        import os
+
+        req_dict = AnalyzeImageRequest(
+            image_url="placeholder",
+            whole_image=_convert_section(whole_image, WholeImageTasks),
+            prominent_person=_convert_section(prominent_person, PersonTasks),
+            prominent_face=_convert_section(prominent_face, FaceTasks),
+            sla_lane=sla_lane,
+            callback_url=callback_url,
+        ).model_dump(exclude={"image_url", "image_base64"})
+
+        filename = os.path.basename(file_path)
+        with open(file_path, "rb") as f:
+            files = {"image_file": (filename, f, "application/octet-stream")}
+            data = {"request_json": json.dumps(req_dict)}
+            resp_data = self._client._request("POST", "/jobs/upload", files=files, data=data)
+
+        return JobResponse(**resp_data)
 
     def get(self, job_id: str | uuid.UUID) -> JobResponse:
         """Get current status of a job."""
@@ -163,7 +204,7 @@ class _OperationsNamespace:
         resp = AvailableOperationsResponse(**data)
         return resp.model_dump()
 
-    def list_local(self) -> dict[str, list[str]]:
+    def list_local(self) -> dict[str, __builtins__.list[str]]:
         """List operations from the local SDK registry."""
         return list_operations()
 
@@ -270,7 +311,8 @@ class StratumClient:
 
     def analyze(
         self,
-        image_url: str,
+        image_url: str | None = None,
+        image_base64: str | bytes | None = None,
         whole_image: WholeImageTasks | dict[str, bool] | None = None,
         prominent_person: PersonTasks | dict[str, bool] | None = None,
         prominent_face: FaceTasks | dict[str, bool] | None = None,
@@ -280,6 +322,27 @@ class StratumClient:
         """One-liner: submit job, wait for completion, return typed results."""
         job = self.jobs.submit(
             image_url=image_url,
+            image_base64=image_base64,
+            whole_image=whole_image,
+            prominent_person=prominent_person,
+            prominent_face=prominent_face,
+            sla_lane=sla_lane
+        )
+        job = self.jobs.wait(job.job_id, timeout=timeout)
+        return self.jobs.results(job.job_id)
+
+    def analyze_file(
+        self,
+        file_path: str,
+        whole_image: WholeImageTasks | dict[str, bool] | None = None,
+        prominent_person: PersonTasks | dict[str, bool] | None = None,
+        prominent_face: FaceTasks | dict[str, bool] | None = None,
+        sla_lane: str = "within_minutes",
+        timeout: float | None = None,
+    ) -> JobResults:
+        """One-liner: submit local file, wait for completion, return typed results."""
+        job = self.jobs.submit_file(
+            file_path=file_path,
             whole_image=whole_image,
             prominent_person=prominent_person,
             prominent_face=prominent_face,

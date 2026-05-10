@@ -50,7 +50,8 @@ class FaceTasks(BaseModel):
 
 class AnalyzeImageRequest(BaseModel):
     """Submit an image for enrichment."""
-    image_url: str
+    image_url: str | None = None
+    image_base64: str | None = None
     whole_image: WholeImageTasks | None = None
     prominent_person: PersonTasks | None = None
     prominent_face: FaceTasks | None = None
@@ -59,6 +60,9 @@ class AnalyzeImageRequest(BaseModel):
 
     @model_validator(mode="after")
     def _validate_sections(self) -> AnalyzeImageRequest:
+        if bool(self.image_url) == bool(self.image_base64):
+            raise ValueError("exactly one of image_url or image_base64 must be provided")
+
         if self.prominent_face is not None and self.prominent_person is None:
             raise ValueError("prominent_face requires prominent_person to also be enabled")
 

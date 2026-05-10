@@ -102,6 +102,36 @@ class _AsyncJobsNamespace:
         data = await self._client._request("POST", "/jobs", json=body.model_dump())
         return JobResponse(**data)
 
+    async def submit_file(
+        self,
+        file_path: str,
+        whole_image: WholeImageTasks | dict[str, bool] | None = None,
+        prominent_person: PersonTasks | dict[str, bool] | None = None,
+        prominent_face: FaceTasks | dict[str, bool] | None = None,
+        sla_lane: str = "within_minutes",
+        callback_url: str | None = None,
+    ) -> JobResponse:
+        """Submit an image file via multipart form upload asynchronously."""
+        import json
+        import os
+
+        req_dict = AnalyzeImageRequest(
+            image_url="placeholder",
+            whole_image=_convert_section(whole_image, WholeImageTasks),
+            prominent_person=_convert_section(prominent_person, PersonTasks),
+            prominent_face=_convert_section(prominent_face, FaceTasks),
+            sla_lane=sla_lane,
+            callback_url=callback_url,
+        ).model_dump(exclude={"image_url", "image_base64"})
+
+        filename = os.path.basename(file_path)
+        with open(file_path, "rb") as f:
+            files = {"image_file": (filename, f, "application/octet-stream")}
+            data = {"request_json": json.dumps(req_dict)}
+            resp_data = await self._client._request("POST", "/jobs/upload", files=files, data=data)
+
+        return JobResponse(**resp_data)
+
     async def get(self, job_id: str | uuid.UUID) -> JobResponse:
         """Get current status of a job."""
         data = await self._client._request("GET", f"/jobs/{job_id}")
@@ -227,7 +257,7 @@ class _AsyncBatchNamespace:
         pairs = await asyncio.gather(
             *[_wait_one(i, job) for i, job in enumerate(jobs)]
         )
-        ordered = [None] * len(jobs)
+        ordered: list[JobResults | None] = [None] * len(jobs)
         for i, result in pairs:
             ordered[i] = result
         return ordered  # type: ignore[return-value]

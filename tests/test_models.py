@@ -31,6 +31,26 @@ class TestAnalyzeImageRequest:
         )
         assert req.callback_url == "https://webhook.site/test"
 
+    def test_image_url_or_base64(self):
+        msg = "exactly one of image_url or image_base64 must be provided"
+        with pytest.raises(ValueError, match=msg):
+            AnalyzeImageRequest(
+                whole_image=WholeImageTasks(clip=True),
+            )
+
+        with pytest.raises(ValueError, match=msg):
+            AnalyzeImageRequest(
+                image_url="http://a.com/a.jpg",
+                image_base64="aGVsbG8=",
+                whole_image=WholeImageTasks(clip=True),
+            )
+
+        req = AnalyzeImageRequest(
+            image_base64="aGVsbG8=",
+            whole_image=WholeImageTasks(clip=True),
+        )
+        assert req.image_base64 == "aGVsbG8="
+
     def test_face_requires_person(self):
         with pytest.raises(ValueError, match="prominent_face requires prominent_person"):
             AnalyzeImageRequest(
