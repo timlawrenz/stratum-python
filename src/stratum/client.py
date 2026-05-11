@@ -52,7 +52,6 @@ class _JobsNamespace:
         whole_image: WholeImageTasks | dict[str, bool] | None = None,
         prominent_person: PersonTasks | dict[str, bool] | None = None,
         prominent_face: FaceTasks | dict[str, bool] | None = None,
-        sla_lane: str = "within_minutes",
         callback_url: str | None = None,
     ) -> JobResponse:
         """Submit an image enrichment job.
@@ -63,7 +62,6 @@ class _JobsNamespace:
             whole_image: Operations to run on the full image.
             prominent_person: Operations to run on the prominent person.
             prominent_face: Operations to run on the prominent face.
-            sla_lane: SLA lane (within_seconds, within_minutes, within_hours).
             callback_url: Optional webhook URL for completion notification.
 
         Returns:
@@ -83,7 +81,6 @@ class _JobsNamespace:
             whole_image=_convert_section(whole_image, WholeImageTasks),
             prominent_person=_convert_section(prominent_person, PersonTasks),
             prominent_face=_convert_section(prominent_face, FaceTasks),
-            sla_lane=sla_lane,
             callback_url=callback_url,
         )
         data = self._client._request("POST", "/jobs", json=body.model_dump())
@@ -95,7 +92,6 @@ class _JobsNamespace:
         whole_image: WholeImageTasks | dict[str, bool] | None = None,
         prominent_person: PersonTasks | dict[str, bool] | None = None,
         prominent_face: FaceTasks | dict[str, bool] | None = None,
-        sla_lane: str = "within_minutes",
         callback_url: str | None = None,
     ) -> JobResponse:
         """Submit an image file via multipart form upload."""
@@ -107,9 +103,8 @@ class _JobsNamespace:
             whole_image=_convert_section(whole_image, WholeImageTasks),
             prominent_person=_convert_section(prominent_person, PersonTasks),
             prominent_face=_convert_section(prominent_face, FaceTasks),
-            sla_lane=sla_lane,
             callback_url=callback_url,
-        ).model_dump(exclude={"image_url", "image_base64"})
+        ).model_dump(exclude={"image_url", "image_base64"}, exclude_none=True)
 
         filename = os.path.basename(file_path)
         with open(file_path, "rb") as f:
@@ -221,7 +216,6 @@ class _BatchNamespace:
         whole_image: WholeImageTasks | dict[str, bool] | None = None,
         prominent_person: PersonTasks | dict[str, bool] | None = None,
         prominent_face: FaceTasks | dict[str, bool] | None = None,
-        sla_lane: str = "within_minutes",
         callback_url: str | None = None,
     ) -> list[JobResponse]:
         """Submit multiple images with the same operations."""
@@ -232,7 +226,6 @@ class _BatchNamespace:
                 whole_image=whole_image,
                 prominent_person=prominent_person,
                 prominent_face=prominent_face,
-                sla_lane=sla_lane,
                 callback_url=callback_url,
             )
             jobs.append(job)
@@ -316,7 +309,6 @@ class StratumClient:
         whole_image: WholeImageTasks | dict[str, bool] | None = None,
         prominent_person: PersonTasks | dict[str, bool] | None = None,
         prominent_face: FaceTasks | dict[str, bool] | None = None,
-        sla_lane: str = "within_minutes",
         timeout: float | None = None,
     ) -> JobResults:
         """One-liner: submit job, wait for completion, return typed results."""
@@ -326,7 +318,6 @@ class StratumClient:
             whole_image=whole_image,
             prominent_person=prominent_person,
             prominent_face=prominent_face,
-            sla_lane=sla_lane
         )
         job = self.jobs.wait(job.job_id, timeout=timeout)
         return self.jobs.results(job.job_id)
@@ -337,7 +328,6 @@ class StratumClient:
         whole_image: WholeImageTasks | dict[str, bool] | None = None,
         prominent_person: PersonTasks | dict[str, bool] | None = None,
         prominent_face: FaceTasks | dict[str, bool] | None = None,
-        sla_lane: str = "within_minutes",
         timeout: float | None = None,
     ) -> JobResults:
         """One-liner: submit local file, wait for completion, return typed results."""
@@ -346,7 +336,6 @@ class StratumClient:
             whole_image=whole_image,
             prominent_person=prominent_person,
             prominent_face=prominent_face,
-            sla_lane=sla_lane
         )
         job = self.jobs.wait(job.job_id, timeout=timeout)
         return self.jobs.results(job.job_id)

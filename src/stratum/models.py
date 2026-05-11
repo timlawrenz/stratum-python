@@ -55,7 +55,6 @@ class AnalyzeImageRequest(BaseModel):
     whole_image: WholeImageTasks | None = None
     prominent_person: PersonTasks | None = None
     prominent_face: FaceTasks | None = None
-    sla_lane: str = "within_minutes"
     callback_url: str | None = None
 
     @model_validator(mode="after")
@@ -100,7 +99,6 @@ class BatchRequest(BaseModel):
     whole_image: WholeImageTasks | None = None
     prominent_person: PersonTasks | None = None
     prominent_face: FaceTasks | None = None
-    sla_lane: str = "within_hours"
     callback_url: str | None = None
 
 
@@ -111,7 +109,6 @@ class JobResponse(BaseModel):
     """Server response for a submitted or polled job."""
     job_id: uuid.UUID
     status: str
-    sla_lane: str
     queue_position: int | None = None
     estimated_wait_seconds: float | None = None
     result_url: str | None = None

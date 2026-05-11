@@ -29,7 +29,6 @@ def mock_job_response(job_id: str) -> dict[str, Any]:
     return {
         "job_id": job_id,
         "status": "queued",
-        "sla_lane": "within_minutes",
         "queue_position": 1,
         "estimated_wait_seconds": 10.0,
         "result_url": None,
@@ -45,7 +44,6 @@ def mock_completed_job(job_id: str) -> dict[str, Any]:
     return {
         "job_id": job_id,
         "status": "completed",
-        "sla_lane": "within_minutes",
         "queue_position": None,
         "estimated_wait_seconds": None,
         "result_url": "https://r2.example.com/results/test.json",

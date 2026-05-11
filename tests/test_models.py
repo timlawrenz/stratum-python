@@ -20,7 +20,6 @@ class TestAnalyzeImageRequest:
             image_url="https://example.com/img.jpg",
             whole_image=WholeImageTasks(clip=True),
         )
-        assert req.sla_lane == "within_minutes"
         assert req.callback_url is None
 
     def test_with_callback(self):

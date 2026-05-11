@@ -87,7 +87,6 @@ class _AsyncJobsNamespace:
         whole_image: WholeImageTasks | dict[str, bool] | None = None,
         prominent_person: PersonTasks | dict[str, bool] | None = None,
         prominent_face: FaceTasks | dict[str, bool] | None = None,
-        sla_lane: str = "within_minutes",
         callback_url: str | None = None,
     ) -> JobResponse:
         """Submit an image enrichment job."""
@@ -96,7 +95,6 @@ class _AsyncJobsNamespace:
             whole_image=_convert_section(whole_image, WholeImageTasks),
             prominent_person=_convert_section(prominent_person, PersonTasks),
             prominent_face=_convert_section(prominent_face, FaceTasks),
-            sla_lane=sla_lane,
             callback_url=callback_url,
         )
         data = await self._client._request("POST", "/jobs", json=body.model_dump())
@@ -108,7 +106,6 @@ class _AsyncJobsNamespace:
         whole_image: WholeImageTasks | dict[str, bool] | None = None,
         prominent_person: PersonTasks | dict[str, bool] | None = None,
         prominent_face: FaceTasks | dict[str, bool] | None = None,
-        sla_lane: str = "within_minutes",
         callback_url: str | None = None,
     ) -> JobResponse:
         """Submit an image file via multipart form upload asynchronously."""
@@ -120,9 +117,8 @@ class _AsyncJobsNamespace:
             whole_image=_convert_section(whole_image, WholeImageTasks),
             prominent_person=_convert_section(prominent_person, PersonTasks),
             prominent_face=_convert_section(prominent_face, FaceTasks),
-            sla_lane=sla_lane,
             callback_url=callback_url,
-        ).model_dump(exclude={"image_url", "image_base64"})
+        ).model_dump(exclude={"image_url", "image_base64"}, exclude_none=True)
 
         filename = os.path.basename(file_path)
         with open(file_path, "rb") as f:
@@ -219,7 +215,6 @@ class _AsyncBatchNamespace:
         whole_image: WholeImageTasks | dict[str, bool] | None = None,
         prominent_person: PersonTasks | dict[str, bool] | None = None,
         prominent_face: FaceTasks | dict[str, bool] | None = None,
-        sla_lane: str = "within_minutes",
         callback_url: str | None = None,
         max_concurrent: int = 10,
     ) -> list[JobResponse]:
@@ -233,7 +228,6 @@ class _AsyncBatchNamespace:
                     whole_image=whole_image,
                     prominent_person=prominent_person,
                     prominent_face=prominent_face,
-                    sla_lane=sla_lane,
                     callback_url=callback_url,
                 )
 
@@ -302,7 +296,6 @@ class AsyncStratumClient:
         whole_image: WholeImageTasks | dict[str, bool] | None = None,
         prominent_person: PersonTasks | dict[str, bool] | None = None,
         prominent_face: FaceTasks | dict[str, bool] | None = None,
-        sla_lane: str = "within_minutes",
         timeout: float | None = None,
     ) -> JobResults:
         """One-liner: submit, wait, return typed results."""
@@ -311,7 +304,6 @@ class AsyncStratumClient:
             whole_image=whole_image,
             prominent_person=prominent_person,
             prominent_face=prominent_face,
-            sla_lane=sla_lane
         )
         job = await self.jobs.wait(job.job_id, timeout=timeout)
         return await self.jobs.results(job.job_id)

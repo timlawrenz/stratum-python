@@ -74,7 +74,6 @@ job = client.jobs.submit(
     image_url="https://example.com/photo.jpg", # Can also use image_base64=...
     whole_image={"clip": True},
     prominent_person={"seg": True},
-    sla_lane="within_minutes",
 )
 
 # Or submit a local file without waiting
