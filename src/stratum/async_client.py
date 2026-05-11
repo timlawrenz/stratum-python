@@ -162,17 +162,28 @@ class _AsyncJobsNamespace:
     async def results(
         self,
         job_id: str | uuid.UUID,
+        _job: JobResponse | None = None,
     ) -> JobResults:
         """Download and parse results for a completed job."""
-        job = await self.get(job_id)
+        job = _job or await self.get(job_id)
         if job.status != "completed":
             raise ValueError(f"Job {job_id} is not completed (status: {job.status})")
         if not job.result_url:
             raise ValueError(f"Job {job_id} has no result_url")
 
-        response = await self._client._http.get(
-            job.result_url, timeout=self._client._config.timeout
-        )
+        for attempt in range(4):
+            response = await self._client._http.get(
+                job.result_url, timeout=self._client._config.timeout
+            )
+            if response.content:
+                break
+            if attempt < 3:
+                await asyncio.sleep(1.5 ** attempt)
+            else:
+                raise RuntimeError(
+                    f"Job {job_id} result_url returned empty body after {attempt + 1} attempts"
+                )
+
         raw = response.json()
         return parse_job_results(raw)
 
@@ -306,7 +317,7 @@ class AsyncStratumClient:
             prominent_face=prominent_face,
         )
         job = await self.jobs.wait(job.job_id, timeout=timeout)
-        return await self.jobs.results(job.job_id)
+        return await self.jobs.results(job.job_id, _job=job)
 
     async def status(self) -> SystemStatusResponse:
         """Get system status."""

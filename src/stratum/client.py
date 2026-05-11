@@ -148,15 +148,30 @@ class _JobsNamespace:
     def results(
         self,
         job_id: str | uuid.UUID,
+        _job: JobResponse | None = None,
     ) -> JobResults:
         """Download and parse results for a completed job."""
-        job = self.get(job_id)
+        # Accept an already-fetched JobResponse (e.g. from wait()) to avoid a
+        # redundant GET that can race with R2 eventual consistency.
+        job = _job or self.get(job_id)
         if job.status != "completed":
             raise ValueError(f"Job {job_id} is not completed (status: {job.status})")
         if not job.result_url:
             raise ValueError(f"Job {job_id} has no result_url")
 
-        response = self._client._http.get(job.result_url, timeout=self._client._config.timeout)
+        # R2 can return an empty body in the brief window between the worker
+        # writing the object and it being fully replicated.  Retry a few times.
+        for attempt in range(4):
+            response = self._client._http.get(job.result_url, timeout=self._client._config.timeout)
+            if response.content:
+                break
+            if attempt < 3:
+                time.sleep(1.5 ** attempt)  # 1s, 1.5s, 2.25s
+            else:
+                raise RuntimeError(
+                    f"Job {job_id} result_url returned empty body after {attempt + 1} attempts"
+                )
+
         raw = response.json()
         return parse_job_results(raw)
 
@@ -320,7 +335,7 @@ class StratumClient:
             prominent_face=prominent_face,
         )
         job = self.jobs.wait(job.job_id, timeout=timeout)
-        return self.jobs.results(job.job_id)
+        return self.jobs.results(job.job_id, _job=job)
 
     def analyze_file(
         self,
@@ -338,7 +353,7 @@ class StratumClient:
             prominent_face=prominent_face,
         )
         job = self.jobs.wait(job.job_id, timeout=timeout)
-        return self.jobs.results(job.job_id)
+        return self.jobs.results(job.job_id, _job=job)
 
     def status(self) -> SystemStatusResponse:
         """Get system status (queue depths, SLA health)."""
