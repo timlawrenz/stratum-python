@@ -68,7 +68,6 @@ class ClientConfig:
     def headers(self) -> dict[str, str]:
         return {
             **_auth_headers(self.api_key),
-            "Content-Type": "application/json",
             "User-Agent": "stratum-python/0.1.0",
         }
 
