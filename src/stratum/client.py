@@ -159,10 +159,10 @@ class _JobsNamespace:
         if not job.result_url:
             raise ValueError(f"Job {job_id} has no result_url")
 
-        # R2 can return an empty body in the brief window between the worker
-        # writing the object and it being fully replicated.  Retry a few times.
+        # R2 presigned URLs are self-authenticating — do NOT send the Bearer
+        # token or any auth headers, or R2 rejects the request with 400.
         for attempt in range(4):
-            response = self._client._http.get(job.result_url, timeout=self._client._config.timeout)
+            response = httpx.get(job.result_url, timeout=self._client._config.timeout)
             if response.content:
                 break
             if attempt < 3:

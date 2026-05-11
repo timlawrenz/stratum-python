@@ -7,7 +7,7 @@ from typing import Any
 
 import httpx
 
-from .exceptions import raise_for_status
+from .exceptions import ServerError, raise_for_status
 
 DEFAULT_BASE_URL = "https://stratum.pi216.ai"
 DEFAULT_TIMEOUT = 30.0
@@ -35,6 +35,11 @@ def _handle_response(response: httpx.Response) -> dict[str, Any]:
         )
     if response.status_code == 204:
         return {}
+    if not response.content:
+        raise ServerError(
+            f"Empty response body from {response.url} (HTTP {response.status_code})",
+            status_code=response.status_code,
+        )
     return response.json()
 
 
