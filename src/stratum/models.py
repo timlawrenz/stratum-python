@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, model_validator
+
+JobStatus = Literal["accepted", "queued", "processing", "completed", "failed"]
 
 # ── Requests ──────────────────────────────────────────────────────────
 
@@ -116,6 +119,15 @@ class JobResponse(BaseModel):
     created_at: datetime
     started_at: datetime | None = None
     completed_at: datetime | None = None
+
+
+class JobsPage(BaseModel):
+    """Paginated list of jobs returned by GET /jobs."""
+    items: list[JobResponse]
+    total: int
+    limit: int
+    offset: int
+    next_offset: int | None
 
 
 class BatchResponse(BaseModel):

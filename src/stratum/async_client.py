@@ -26,6 +26,8 @@ from .models import (
     BalanceResponse,
     FaceTasks,
     JobResponse,
+    JobsPage,
+    JobStatus,
     PersonTasks,
     SystemStatusResponse,
     WholeImageTasks,
@@ -187,12 +189,17 @@ class _AsyncJobsNamespace:
         raw = response.json()
         return parse_job_results(raw)
 
-    async def list(self, limit: int = 20, offset: int = 0) -> list[JobResponse]:
-        """List recent jobs."""
+    async def list(
+        self, limit: int = 20, offset: int = 0, status: JobStatus | None = None
+    ) -> JobsPage:
+        """List jobs with optional status filter. Returns a paginated envelope."""
+        params: dict = {"limit": limit, "offset": offset}
+        if status is not None:
+            params["status"] = status
         data = await self._client._request(
-            "GET", "/jobs", params={"limit": limit, "offset": offset}
+            "GET", "/jobs", params=params
         )
-        return [JobResponse(**j) for j in data]
+        return JobsPage(**data)
 
 
 class _AsyncBillingNamespace:
